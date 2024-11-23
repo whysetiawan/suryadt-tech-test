@@ -1,0 +1,63 @@
+name: 'Analyze'
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # Allows you to run the workflow manually
+
+jobs:
+  analyze:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      checks: write
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Analyze code
+        run: yarn lint
+
+  test-app:
+    needs: analyze
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      checks: write
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Run tests
+        uses: ArtiomTr/jest-coverage-report-action@v2
+        with:
+          custom-title: 'Coverage Report for App'
+          test-script: yarn test --maxWorker=1
+          package-manager: yarn
