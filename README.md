@@ -2,12 +2,6 @@
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app). This app using **React Compiler**, so you won't find any memoize function or hooks that optimize react app.
 
-## NOTE on React Compiler
-
-You can find the code without the compiler version in the `main-no-compiler` branch or [this link](https://github.com/whysetiawan/flip-technical-test/tree/main-no-compiler)
-
-<img width="1529" alt="Screenshot 2024-11-15 at 01 34 52" src="https://github.com/user-attachments/assets/e29bda37-d08f-48a2-b2c8-99e089c67f08">
-
 ## Get started
 
 1. Install dependencies
