@@ -6,8 +6,21 @@ export interface DeviceRef {
   name?: string | null;
 }
 
-const colorCharacteristicUUID = '2A37'; // Custom UUID for the color characteristic
-const colorServiceUUID = '180D'; // Custom UUID for the color service
+/**
+ * for the sake of simplicity, we are using global scope UUID for the color characteristic and service.
+ * however, if you want to add the custom UUID, you should add the custom UUID to the function parameters.
+ * or you can create a constant variable that store the custom UUID
+ * example:
+ * const DEVICE_CHARACTERISTICS = {
+ *   COLOR_CHARACTERISTIC: '2A37',
+ * }
+ *
+ * const DEVICE_SERVICES = {
+ *   COLOR_SERVICE: '180D',
+ * }
+ */
+const COLOR_CHARACTERISTIC_UUID = '2A37'; // Custom UUID for the color characteristic
+const COLOR_SERVICE_UUID = '180D'; // Custom UUID for the color service
 
 class BLEService {
   static instance: BLEService | null = null;
@@ -74,18 +87,46 @@ class BLEService {
     }
   }
 
+  async readSignalStrength(deviceId: string) {
+    if (!this.device) {
+      return 0;
+    }
+
+    const isConnected = await this.manager.isDeviceConnected(this.device.id!);
+    if (isConnected) {
+      const device = await this.manager.readRSSIForDevice(deviceId);
+      return device.rssi!;
+    }
+    return 0;
+  }
+
   destroy() {
-    console.log('BLEService destroy');
     this.manager.destroy();
     this.device = null;
     BLEService.instance = null;
   }
 
+  /**
+   * Reads the color characteristic from a connected device.
+   *
+   * @param deviceId - The ID of the device from which to read the characteristic.
+   * @returns A promise that resolves to a string representing the color value
+   *          if available, or undefined if not.
+   *
+   * NOTE - this methods only accept deviceId because currently the app will only using
+   * variable that previousely defined at the global scope.
+   * @const COLOR_CHARACTERISTIC_UUID
+   * @const COLOR_SERVICE_UUID
+   *
+   * Recomendations:
+   * - if you want the extend the functionality, you should add the custom UUID to the
+   * function parameters.
+   */
   async readCharacteristic(deviceId: string) {
     const characteristic = await this.manager.readCharacteristicForDevice(
       deviceId,
-      colorServiceUUID,
-      colorCharacteristicUUID,
+      COLOR_SERVICE_UUID,
+      COLOR_CHARACTERISTIC_UUID,
     );
     if (characteristic.value) {
       const color = atob(characteristic.value);
@@ -93,29 +134,71 @@ class BLEService {
     }
   }
 
+  /**
+   * Writes a color characteristic to a connected device.
+   *
+   * @param deviceId - The ID of the device to which to write the characteristic.
+   * @param hexColor - The color value to write, in the format of a hexadecimal
+   *                   string (e.g. '#FF0000' for red).
+   * @returns A promise that resolves when the write operation completes.
+   *
+   * NOTE - this methods only accept deviceId and hexColor because currently the app
+   * will only using variable that previousely defined at the global scope.
+   * @const COLOR_CHARACTERISTIC_UUID
+   * @const COLOR_SERVICE_UUID
+   *
+   * Recomendations:
+   * - if you want the extend the functionality, you should add the custom UUID to the
+   * function parameters
+   */
   async writeCharacteristic(deviceId: string, hexColor: string) {
     const colorData = btoa(hexColor);
     await this.manager.writeCharacteristicWithResponseForDevice(
       deviceId,
-      colorServiceUUID,
-      colorCharacteristicUUID,
+      COLOR_SERVICE_UUID,
+      COLOR_CHARACTERISTIC_UUID,
       colorData,
     );
   }
 
-  subscribeCharacteristic(deviceId: string, onUpdate: (value: string) => void) {
+  /**
+   * Subscribes to updates for a specific characteristic from a device.
+   *
+   * Adds a listener to be notified whenever the characteristic value changes.
+   * The listener will be called with the updated value. This function initiates
+   * monitoring of the characteristic and logs any error encountered during
+   * monitoring.
+   *
+   * @param deviceId - The ID of the device to subscribe to.
+   * @param onUpdate - A callback function that is invoked with the updated
+   *                   characteristic value as a string.
+   *
+   * @returns A function that can be called to unsubscribe the listener and
+   *          stop monitoring the characteristic.
+   *
+   * NOTE - this methods only accept deviceId and hexColor because currently the app
+   * will only using variable that previousely defined at the global scope.
+   * @const COLOR_CHARACTERISTIC_UUID
+   * @const COLOR_SERVICE_UUID
+   *
+   * Recomendations:
+   * - if you want the extend the functionality, you should add the custom UUID to the
+   * function parameters
+   */
+  subscribeCharacteristic(
+    deviceId: string,
+    onUpdate: (value: string) => void,
+    onError?: (error: BleError) => void,
+  ) {
     // Add the listener to the Set
     this.listeners.add(onUpdate);
-    console.log('BLEService subscribeCharacteristic', deviceId);
     const subscription = this.manager.monitorCharacteristicForDevice(
       deviceId,
-      colorServiceUUID,
-      colorCharacteristicUUID,
+      COLOR_SERVICE_UUID,
+      COLOR_CHARACTERISTIC_UUID,
       (error, characteristic) => {
-        console.log('characteristic');
         if (error) {
-          console.error('Error monitoring characteristic:', error.message);
-          return;
+          return onError?.(error);
         }
         if (characteristic?.value) {
           const color = atob(characteristic.value);

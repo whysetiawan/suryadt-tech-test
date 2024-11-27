@@ -1,39 +1,42 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FlatList } from 'react-native';
 
+import { useBLEService } from '#/modules/ble/application/useBLEService';
 import PeripheralListItem from '#/modules/ble/presentation/PeripheralListItem';
 import type { DeviceRef } from '#/shared/services/BLEService';
-import BLEService from '#/shared/services/BLEService';
-
 const PeripheralList: React.FC = () => {
   const [devices, setDevices] = useState<Map<string, DeviceRef>>(new Map());
-  const serviceRef = useRef<BLEService>(BLEService.getInstance());
+  const [service, requestBluetoothPermission] = useBLEService();
 
   useEffect(() => {
-    const ref = serviceRef.current;
-    return () => {
-      ref.destroy();
-    };
-  }, []);
+    requestBluetoothPermission();
+  }, [requestBluetoothPermission]);
 
   useEffect(() => {
-    serviceRef.current?.scanPeripherals((err, device) => {
+    service?.scanPeripherals((err, device) => {
       if (err) {
         console.error(err);
         return;
       }
       setDevices((prev) => {
+        if (prev.has(device.id ?? '')) {
+          return prev;
+        }
         const newDevices = new Map(prev);
         newDevices.set(device.id ?? '', device);
         return newDevices;
       });
     });
-  }, []);
+
+    return () => {
+      service?.stopPeripheralScan();
+    };
+  }, [service]);
 
   const scannedDevices = Array.from(devices.values());
 
   const _renderItem = ({ item }: { item: DeviceRef }) => {
-    return <PeripheralListItem item={item} service={serviceRef.current} />;
+    return <PeripheralListItem item={item} service={service} />;
   };
 
   return <FlatList data={scannedDevices} renderItem={_renderItem} />;

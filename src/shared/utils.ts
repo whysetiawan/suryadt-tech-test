@@ -70,3 +70,10 @@ export const throttle = (func: Function, time: number) => {
     }
   };
 };
+
+export const getSignalBars = (rssi: number): number => {
+  if (rssi >= -40) return 4; // Excellent
+  if (rssi >= -70) return 3; // Good
+  if (rssi >= -90) return 2; // Weak
+  return 1; // Very Poor
+};
